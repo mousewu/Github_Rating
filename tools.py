@@ -2,42 +2,69 @@ import json
 import requests
 import random
 import re
+import time
 s=requests.Session()
-#s.auth=('sunyiwei24601','7646ec91e4625755edb7c9788a5346a68936f14e')
+id=['sunyiwei24601']
+s.auth=('sunyiwei24601','d6cd802b17e4382c1bcea961e1f6cd4ee0fa8a35')
 
 def get_headers():
     tokens=[
-        '7646ec91e4625755edb7c9788a5346a68936f14e',
-        'cad0bbf3e6bfc03e2f505f1bba5e917e34d87de2'
+        # '9a9c1d46c47f75f57aa382d76b0b0ed98b71ffcc',
+        'd6cd802b17e4382c1bcea961e1f6cd4ee0fa8a35',
+        '37778db34015b99bdb6ba164e93ef7f105fac4cc',
     ]
     headers={
         'Authorization':'token '+random.choice(tokens),
         'Accept'       :'application/vnd.github.v3.star+json,'
                         'application/vnd.github.symmetra-preview+json,'
                         'application/vnd.github.squirrel-girl-preview,'
-                        'application/vnd.github.hellcat-preview+json'
+                        'application/vnd.github.hellcat-preview+json,'
+                        'application/vnd.github.mercy-preview+json,'
+        
     }
     return headers
 
 def get_tools(url):
-    r=s.get(url,headers=get_headers())
+    r=requests.get(url,headers=get_headers())
     j=json.loads(r.text)
     return j
 
+def page_preview(link):
+    if link :
+        try:
+            c=re.findall('.+page=(.+)>; rel="last"',link)
+            return int(c[0])
+        except:
+            print(link)
+            return 1
+    else: return 1
+    
+    
 def pages_tool(url):
     next=[url]
-   
+    n=0
     while(len(next)!=0):
-        print(url)
+        if(n%20==0):
+            print(url)
+        n+=1
+        
         url=next[0]
-        r=s.get(url,headers=get_headers())
+        r=requests.get(url,headers=get_headers())
         j=json.loads(r.text)
-       
+        
         if(isinstance(j,dict) and j.get('message')):
             return []
         h=r.headers
         head=dict(h)
-        
+        if n==1:
+            t=page_preview(head.get('Link',None))
+            
+            # if t>20:
+            #     print(t)
+            #     print(url)
+            #     print('too long to catch ')
+            #     return []
+            #     break
         if(head.get('Link')):
             link=head['Link']
             next=re.findall('.*<(.*?)>; rel="next"',link)
@@ -49,7 +76,7 @@ def pages_tool(url):
 def get_user(name):
     url='https://api.github.com/users/'+name
     print(url)
-    response=s.get(url,headers=get_headers())
+    response=requests.get(url,headers=get_headers())
     
     j=json.loads(response.text)
     return j
@@ -57,7 +84,7 @@ def get_user(name):
 def get_repos(type,name):
     url='https://api.github.com/'+type+'/'+name+'/repos'
     print(url)
-    response=s.get(url,headers=get_headers())
+    response=requests.get(url,headers=get_headers())
     
     j=json.loads(response.text)
     return j
@@ -65,7 +92,7 @@ def get_repos(type,name):
 def get_ogz(org):
     url='https://api.github.com/orgs/'+org
     print(url)
-    response=s.get(url,headers=get_headers())
+    response=requests.get(url,headers=get_headers())
     
     j=json.loads(response.text)
     if (j.get('type')):
@@ -96,8 +123,29 @@ def get_user_details(name):
         uu=detail[url].split('{')[0]
         details[url[:-4]]=list(pages_tool(uu))
     return details
-
+#获取大致的数量，3页以内精确计算，三页以上n*30模糊计算
+def get_page_num(url):
+    response=requests.get(url,headers=get_headers())
+    headers=response.headers
+    
+    link=headers.get('Link')
+    
+    page_num=page_preview(link)
+    n=(page_num-1)*30
+    last_url=url+'?page='+str(page_num)
+    #print(last_url,end=' ')
+    j=get_tools(last_url)
+    if random.random()<0.01:
+        if len(j)>0:
+           print(j[0])
+    n=n+len(j)
+    #print(n)
+    return n
+    
+    
+    
 if __name__=='__main__':
-    name='neurochain'
-    print(get_user_details(name))
-    pass
+    link='https://api.github.com/repos/ethereum/go-ethereum/commits'
+    a=get_page_num(link)
+    print(a)
+    
